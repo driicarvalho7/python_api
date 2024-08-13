@@ -1,36 +1,58 @@
 from app.models.user import User
+from app.database import get_connection
 
 class UserRepository:
-    def __init__(self):
-        self.users = [
-            User(1, "Master", "master@gmail.com", "master123"),
-            User(2, "Developer", "dev@gmail.com", "dev123")
-        ]
-
     def get_all(self):
-        return [user.to_dict() for user in self.users]
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, name, email, password FROM api_py.user")
+        rows = cursor.fetchall()
+        users = [User(row[0], row[1], row[2], row[3]).to_dict() for row in rows]
+        cursor.close()
+        connection.close()
+        return users
 
     def get_by_id(self, user_id):
-        user = next((user for user in self.users if user.id == user_id), None)
-        return user.to_dict() if user else None
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, name, email, password FROM api_py.user WHERE id = %s", (user_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        return User(row[0], row[1], row[2], row[3]).to_dict() if row else None
 
     def create(self, data):
-        new_user = User(len(self.users) + 1, data['name'], data['email'], data['password'])
-        self.users.append(new_user)
-        return new_user.to_dict()
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO api_py.user (name, email, password) VALUES (%s, %s, %s) RETURNING id",
+            (data['name'], data['email'], data['password'])
+        )
+        new_id = cursor.fetchone()[0]
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return User(new_id, data['name'], data['email'], data['password']).to_dict()
 
     def update(self, user_id, data):
-        user = next((user for user in self.users if user.id == user_id), None)
-        if user:
-            user.name = data.get('name', user.name)
-            user.email = data.get('email', user.email)
-            user.password = data.get('password', user.password)
-            return user.to_dict()
-        return None
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE api_py.user SET name = %s, email = %s, password = %s WHERE id = %s RETURNING id, name, email, password",
+            (data['name'], data['email'], data['password'], user_id)
+        )
+        row = cursor.fetchone()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return User(row[0], row[1], row[2], row[3]).to_dict() if row else None
 
     def delete(self, user_id):
-        user = next((user for user in self.users if user.id == user_id), None)
-        if user:
-            self.users.remove(user)
-            return True
-        return False
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM api_py.user WHERE id = %s RETURNING id", (user_id,))
+        deleted_id = cursor.fetchone()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return deleted_id is not None
