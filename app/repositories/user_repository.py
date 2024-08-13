@@ -5,7 +5,7 @@ class UserRepository:
     def get_all(self):
         connection = get_connection()
         cursor = connection.cursor()
-        cursor.execute("SELECT id, name, email FROM api_py.user")
+        cursor.execute("SELECT id, name, email, password FROM api_py.user")
         rows = cursor.fetchall()
         users = [User(row[0], row[1], row[2], row[3]).to_dict() for row in rows]
         cursor.close()
