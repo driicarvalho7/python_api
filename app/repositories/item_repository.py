@@ -1,35 +1,58 @@
 from app.models.item import Item
+from app.database import get_connection
 
 class ItemRepository:
-    def __init__(self):
-        self.items = [
-            Item(1, "Item 1", "Descrição do Item 1"),
-            Item(2, "Item 2", "Descrição do Item 2")
-        ]
-
     def get_all(self):
-        return [item.to_dict() for item in self.items]
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, name, description FROM api_py.item")
+        rows = cursor.fetchall()
+        items = [Item(row[0], row[1], row[2]).to_dict() for row in rows]
+        cursor.close()
+        connection.close()
+        return items
 
     def get_by_id(self, item_id):
-        item = next((item for item in self.items if item.id == item_id), None)
-        return item.to_dict() if item else None
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, name, description FROM api_py.item WHERE id = %s", (item_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        return Item(row[0], row[1], row[2]).to_dict() if row else None
 
     def create(self, data):
-        new_item = Item(len(self.items) + 1, data['name'], data['description'])
-        self.items.append(new_item)
-        return new_item.to_dict()
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO api_py.item (name, description) VALUES (%s, %s) RETURNING id",
+            (data['name'], data['description'])
+        )
+        new_id = cursor.fetchone()[0]
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return Item(new_id, data['name'], data['description']).to_dict()
 
     def update(self, item_id, data):
-        item = next((item for item in self.items if item.id == item_id), None)
-        if item:
-            item.name = data.get('name', item.name)
-            item.description = data.get('description', item.description)
-            return item.to_dict()
-        return None
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE api_py.item SET name = %s, description = %s WHERE id = %s RETURNING id, name, description",
+            (data['name'], data['description'], item_id)
+        )
+        row = cursor.fetchone()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return Item(row[0], row[1], row[2]).to_dict() if row else None
 
     def delete(self, item_id):
-        item = next((item for item in self.items if item.id == item_id), None)
-        if item:
-            self.items.remove(item)
-            return True
-        return False
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM api_py.item WHERE id = %s RETURNING id", (item_id,))
+        deleted_id = cursor.fetchone()
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return deleted_id is not None
