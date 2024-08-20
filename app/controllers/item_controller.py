@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
 from app.use_cases.item_use_cases import ItemUseCases
 
 item_blueprint = Blueprint('items', __name__)
@@ -8,12 +9,14 @@ item_use_cases = ItemUseCases()
 
 # GET /items
 @item_blueprint.route('/', methods=['GET'])
+@jwt_required()
 def get_items():
     items = item_use_cases.get_all_items()
     return jsonify(items), 200
 
 # GET /items/{id}
 @item_blueprint.route('/<int:item_id>', methods=['GET'])
+@jwt_required()
 def get_item(item_id):
     item = item_use_cases.get_item_by_id(item_id)
     if item:
@@ -23,6 +26,7 @@ def get_item(item_id):
 
 # POST /items
 @item_blueprint.route('/', methods=['POST'])
+@jwt_required()
 def create_item():
     data = request.get_json()
     new_item = item_use_cases.create_item(data)
@@ -30,6 +34,7 @@ def create_item():
 
 # PUT /items/{id}
 @item_blueprint.route('/<int:item_id>', methods=['PUT'])
+@jwt_required()
 def update_item(item_id):
     data = request.get_json()
     updated_item = item_use_cases.update_item(item_id, data)
@@ -40,6 +45,7 @@ def update_item(item_id):
 
 # DELTE /items/{id}
 @item_blueprint.route('/<int:item_id>', methods=['DELETE'])
+@jwt_required()
 def delete_item(item_id):
     success = item_use_cases.delete_item(item_id)
     if success:

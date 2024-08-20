@@ -21,6 +21,15 @@ class UserRepository:
         connection.close()
         return User(row[0], row[1], row[2], row[3]).to_dict() if row else None
 
+    def get_by_email(self, email):
+        connection = get_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT id, name, email, password FROM api_py.user WHERE email = %s", (email,))
+        row = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        return User(row[0], row[1], row[2], row[3]).to_dict() if row else None
+    
     def create(self, data):
         connection = get_connection()
         cursor = connection.cursor()
